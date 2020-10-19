@@ -8,13 +8,28 @@
 #include <vector>     // std::vector
 #include <algorithm>  // std::find_if
 #include <cctype>     // std::isalpha
+#include <filesystem> // std::filesystem
+
+// fwd ref
+std::string GetSubjectLine(char const* filename);
+void GetWords(std::string& line, std::vector<std::string>& words);
 
 int main()
 {
-  std::ifstream ifs("00004.68819fc91d34c82433074d7bd3127dcc", std::ifstream::in);
+  // get subject line w/ subject
+  std::string line = GetSubjectLine("00004.68819fc91d34c82433074d7bd3127dcc");
 
-  ////
-  // get line w/ subject
+  // get words from subject line
+  std::vector<std::string> words;
+  GetWords(line, words);
+
+
+  return 0;
+}
+
+std::string GetSubjectLine(char const* filename)
+{
+  std::ifstream ifs(filename, std::ifstream::in);
 
   std::string line;
   while (std::getline(ifs, line))
@@ -25,17 +40,17 @@ int main()
     if (not line.compare(0, 9, "Subject: ")) break;
   }
 
-  ////
-  // get words from subject line
+  return line;
+}
 
+void GetWords(std::string& line, std::vector<std::string>& words)
+{
   // substr w/o "Subject: "
   line = line.substr(9);
   // iss
   std::istringstream iss(line);
   // words from line
   std::string word;
-  // res
-  std::vector<std::string> words;
 
   struct non_alpha {
     bool operator()(char c) {
@@ -75,8 +90,5 @@ int main()
     std::cout << lowerWord << std::endl;
     words.push_back(lowerWord);
   }
-
-
-  return 0;
 }
 
