@@ -1,20 +1,82 @@
 // spam_filter-vs_prj.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <iostream>
+#include <fstream>    // std::ifstream
+#include <string>     // std::string
+#include <sstream>    // std::istringstream
+#include <iostream>   // std::cout
+#include <vector>     // std::vector
+#include <algorithm>  // std::find_if
+#include <cctype>     // std::isalpha
 
 int main()
 {
-    std::cout << "Hello World!\n";
+  std::ifstream ifs("00004.68819fc91d34c82433074d7bd3127dcc", std::ifstream::in);
+
+  ////
+  // get line w/ subject
+
+  std::string line;
+  while (std::getline(ifs, line))
+  {
+    std::istringstream iss(line);
+
+    // skip non-subject lines
+    if (not line.compare(0, 9, "Subject: ")) break;
+  }
+
+  ////
+  // get words from subject line
+
+  // substr w/o "Subject: "
+  line = line.substr(9);
+  // iss
+  std::istringstream iss(line);
+  // words from line
+  std::string word;
+  // res
+  std::vector<std::string> words;
+
+  struct non_alpha {
+    bool operator()(char c) {
+      return !std::isalpha(c);
+    }
+  };
+
+  while (iss >> word)
+  {
+    bool contains_non_alpha
+      = std::find_if(word.begin(), word.end(), non_alpha()) != word.end();
+    // if not only letters
+    if (contains_non_alpha)
+    {
+      // get only letters
+      std::string letterWord;
+      for (auto& c : word)
+      {
+        if (not std::isalpha(c)) break;
+
+        letterWord += c;
+      }
+
+      word = letterWord;
+    }
+
+    // skip empty word
+    if (word.empty()) continue;
+
+    // get lower-case word
+    std::string lowerWord;
+    for (auto& c : word)
+    {
+      lowerWord += std::tolower(c);
+    }
+
+    std::cout << lowerWord << std::endl;
+    words.push_back(lowerWord);
+  }
+
+
+  return 0;
 }
 
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
