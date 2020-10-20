@@ -1,26 +1,28 @@
 // spam_filter-vs_prj.cpp : This file contains the 'main' function. Program execution begins and ends there.
 //
 
-#include <fstream>    // std::ifstream
-#include <string>     // std::string
-#include <sstream>    // std::istringstream
-#include <iostream>   // std::cout
-#include <vector>     // std::vector
-#include <algorithm>  // std::find_if
-#include <cctype>     // std::isalpha
-#include <filesystem> // std::filesystem
+#include <fstream>        // std::ifstream
+#include <string>         // std::string
+#include <sstream>        // std::istringstream
+#include <iostream>       // std::cout
+//#include <vector>         // std::vector
+#include <unordered_map>  // std::unordered_map
+#include <algorithm>      // std::find_if
+#include <cctype>         // std::isalpha
+#include <filesystem>     // std::filesystem
 namespace fs = std::filesystem;
 #include "utf8.h"
 
 // fwd ref
 std::string GetSubjectLine(char const* filename);
-void GetWords(std::string& line, std::vector<std::string>& words);
+void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& words);
 
 int main()
 {
   // res
-  std::vector<std::string> words;
+  std::unordered_map<std::string, unsigned> words;
 
+  // get ls of words
   std::string path = "data/spam/train";
   for (const auto& entry : fs::directory_iterator(path))
   {
@@ -34,9 +36,12 @@ int main()
     GetWords(line, words);
   }
 
+  // get 
+
+  //debug
   for (auto& word : words)
   {
-    std::cout << word << " ";
+    std::cout << word.first << ": " << word.second << std::endl;
   }
   std::cout << std::endl;
 
@@ -67,7 +72,7 @@ bool isalpha(uint32_t c) {
         || (c >= 0x0061 && c <= 0x007A);
 }
 
-void GetWords(std::string& line, std::vector<std::string>& words)
+void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& words)
 {
   // skip if no line
   if (line.empty()) return;
@@ -79,6 +84,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
   // words from line
   std::string word;
 
+  // https://stackoverflow.com/questions/7616867/how-to-test-a-string-for-letters-only/7616973
   //struct non_alpha {
   //  bool operator()(char c) {
   //    return !std::isalpha(c);
@@ -102,6 +108,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
       std::string letterWord;
       for (auto& c : word)
       {
+        // stop if not a letter
         if (not isalpha(static_cast<uint32_t>(c))) break;
 
         letterWord += c;
@@ -120,8 +127,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
       lowerWord += std::tolower(c);
     }
 
-    //std::cout << lowerWord << std::endl;
-    words.push_back(lowerWord);
+    ++words[lowerWord];
   }
 }
 
