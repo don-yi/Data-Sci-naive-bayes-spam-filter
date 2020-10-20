@@ -26,6 +26,31 @@ void GetTop5Probs(
   std::unordered_map<std::string, float>& probMap,
   std::unordered_map<std::string, float>& top5Prob
 );
+void InitIsWordsInSubject(
+  std::unordered_map<std::string, bool>& isWordsInSubject,
+  std::unordered_map<std::string, float>& top5SpamProb,
+  std::unordered_map<std::string, float>& top5HamProb
+);
+float& GetSpamProbGivenWords(
+  std::unordered_map<std::string, unsigned>& words,
+  unsigned& spamCt,
+  unsigned& hamCt,
+  std::unordered_map<std::string, float>& spamProbMap,
+  std::unordered_map<std::string, float>& hamProbMap
+);
+float CalcPWords(
+  std::unordered_map<std::string, float>& probMap,
+  std::unordered_map<std::string, unsigned>& words
+);
+void TestSpamFilter(
+  char const* testPath,
+  unsigned& spamCt,
+  unsigned& hamCt,
+  std::unordered_map<std::string, float>& spamProbMap,
+  std::unordered_map<std::string, float>& hamProbMap,
+  unsigned& predSpamCt,
+  unsigned& predHamCt
+);
 
 int main()
 {
@@ -132,6 +157,61 @@ int main()
   std::cout << "TOP 5 HAM WORDS :" << std::endl;
   GetTop5Probs(hamProbMap, top5HamProb);
 
+  ////
+  // Test the spam filter using the saved testing data.
+
+  // res
+  unsigned trueSpam = 0;
+  unsigned falseSpam = 0;
+  unsigned trueHam = 0;
+  unsigned falseHam = 0;
+
+  //std::cout << std::endl;
+
+  TestSpamFilter(
+    "data/spam/test",
+    spamCt,
+    hamCt,
+    spamProbMap,
+    hamProbMap,
+    trueSpam,
+    falseSpam
+  );
+  TestSpamFilter(
+    "data/easy_ham/test",
+    spamCt,
+    hamCt,
+    spamProbMap,
+    hamProbMap,
+    falseHam,
+    trueHam
+  );
+  TestSpamFilter(
+    "data/hard_ham/test",
+    spamCt,
+    hamCt,
+    spamProbMap,
+    hamProbMap,
+    falseHam,
+    trueHam
+  );
+
+  // total emails
+  unsigned numEmail = trueSpam + falseSpam + trueHam + falseHam;
+  unsigned numPredSpam = trueSpam + falseHam;
+  unsigned numRealSpam = trueSpam + falseSpam;
+
+  // output res rates
+  std::cout << std::endl;
+  std::cout << "ACCURACY RATE: "
+    << static_cast<float>((trueSpam + trueHam)) / static_cast<float>(numEmail)
+    << std::endl;
+  std::cout << "PRECISION RATE: "
+    << static_cast<float>(trueSpam) / static_cast<float>(numPredSpam)
+    << std::endl;
+  std::cout << "RECALL RATE: "
+    << static_cast<float>(trueSpam) / static_cast<float>(numRealSpam)
+    << std::endl;
 
   return 0;
 }
@@ -235,6 +315,7 @@ void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& word
       or lowerWord == "perl"
       ) continue;
 
+    // up words map
     ++words[lowerWord];
   }
 }
@@ -272,6 +353,116 @@ void GetTop5Probs(std::unordered_map<std::string, float>& probMap, std::unordere
     probMap.erase(pr->first);
   }
 
+  // put top 5 back to the map
+  for (auto& i : top5Prob)
+  {
+    probMap[i.first] = i.second;
+  }
+
   std::cout << std::endl;
 }
 
+// (e) Set up the function
+float& GetSpamProbGivenWords(
+  std::unordered_map<std::string, unsigned>& words,
+  unsigned& spamCt,
+  unsigned& hamCt,
+  std::unordered_map<std::string, float>& spamProbMap,
+  std::unordered_map<std::string, float>& hamProbMap
+)
+{
+  unsigned totalCt = spamCt + hamCt;
+
+  ////
+  // pre-computes
+  float pSpam = static_cast<float>(spamCt) / static_cast<float>(totalCt);
+  float pHam = static_cast<float>(hamCt) / static_cast<float>(totalCt);
+
+  float pWordsSpam = CalcPWords(spamProbMap, words);
+  float pWordsHam = CalcPWords(hamProbMap, words);
+
+  ////
+  float res = (pWordsSpam * pSpam) / (pWordsSpam * pSpam + pWordsHam * pHam);
+  return res;
+}
+
+void InitIsWordsInSubject(
+  std::unordered_map<std::string, bool>& isWordsInSubject,
+  std::unordered_map<std::string, float>& top5SpamProb,
+  std::unordered_map<std::string, float>& top5HamProb
+)
+{
+  for (auto& pr : top5SpamProb)
+  {
+    isWordsInSubject[pr.first] = false;
+  }
+  for (auto& pr : top5HamProb)
+  {
+    isWordsInSubject[pr.first] = false;
+  }
+}
+
+//void IncludeEachOtherProb(
+//  std::unordered_map<std::string, float>& top5Prob1,
+//  std::unordered_map<std::string, float>& top5Prob2,
+//  unsigned& ct2
+//)
+//{
+//  // include each other in prob map
+//  for (auto& i : top5Prob1) {
+//    std::string word = i.first;
+//
+//    // skip if exist
+//    if (top5Prob2.find(word) != top5Prob2.end()) {
+//      continue;
+//    }
+//
+//    top5Prob2[word] = static_cast<float>(ALPHA) / static_cast<float>(BETA + ct2);
+//  }
+//}
+
+float CalcPWords(
+  std::unordered_map<std::string, float>& probMap,
+  std::unordered_map<std::string, unsigned>& words
+) {
+  float res = 1.0f;
+
+  for (auto& i : probMap) {
+    std::string word = i.first;
+    float prob = i.second;
+
+    // handle prob given word
+    if (words.find(word) != words.end()) res *= prob;
+    else res *= 1.0f - prob;
+  }
+
+  return res;
+}
+
+void TestSpamFilter(
+  char const* testPath,
+  unsigned& spamCt,
+  unsigned& hamCt,
+  std::unordered_map<std::string, float>& spamProbMap,
+  std::unordered_map<std::string, float>& hamProbMap,
+  unsigned& predSpamCt,
+  unsigned& predHamCt
+) {
+  for (const auto& entry : fs::directory_iterator(testPath)) {
+    fs::path entryPath = entry.path();
+    std::string path_string{entryPath.u8string()};
+
+    // get subject line w/ subject
+    std::string line = GetSubjectLine(path_string.c_str());
+
+    // get words from subject line
+    std::unordered_map<std::string, unsigned> words;
+    GetWords(line, words);
+
+    float spamP = GetSpamProbGivenWords(words, spamCt, hamCt, spamProbMap, hamProbMap);
+    //std::cout << spamP << std::endl;
+
+    if      (spamP >= .3f) ++predSpamCt;
+    else if (spamP <  .3f) ++predHamCt;
+  }
+}
