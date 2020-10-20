@@ -61,6 +61,7 @@ std::string GetSubjectLine(char const* filename)
   return line;
 }
 
+// https://stackoverflow.com/questions/7616867/how-to-test-a-string-for-letters-only/7616973
 bool isalpha(uint32_t c) {
     return (c >= 0x0041 && c <= 0x005A)
         || (c >= 0x0061 && c <= 0x007A);
@@ -68,6 +69,7 @@ bool isalpha(uint32_t c) {
 
 void GetWords(std::string& line, std::vector<std::string>& words)
 {
+  // skip if no line
   if (line.empty()) return;
 
   // substr w/o "Subject: "
@@ -85,13 +87,13 @@ void GetWords(std::string& line, std::vector<std::string>& words)
 
   while (iss >> word)
   {
+    // https://stackoverflow.com/questions/7616867/how-to-test-a-string-for-letters-only/7616973
     //bool contains_non_alpha
     //  = std::find_if(word.begin(), word.end(), non_alpha()) != word.end();
     bool contains_non_alpha
       = std::any_of(utf8::unchecked::iterator(word.begin()),
         utf8::unchecked::iterator(word.end()),
         [](uint32_t c) { return !isalpha(c); });
-
 
     // if not only letters
     if (contains_non_alpha)
@@ -100,7 +102,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
       std::string letterWord;
       for (auto& c : word)
       {
-        if (isalpha(static_cast<uint32_t>(c))) break;
+        if (not isalpha(static_cast<uint32_t>(c))) break;
 
         letterWord += c;
       }
