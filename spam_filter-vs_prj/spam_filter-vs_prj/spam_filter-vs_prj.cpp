@@ -16,15 +16,28 @@ namespace fs = std::filesystem;
 // fwd ref
 std::string GetSubjectLine(char const* filename);
 void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& words);
+void CalcProbForWord(
+  std::unordered_map<std::string, float>& probMap,
+  std::unordered_map<std::string, unsigned>& spamWords,
+  unsigned ct
+);
 
 int main()
 {
   // res
-  std::unordered_map<std::string, unsigned> words;
+  std::unordered_map<std::string, unsigned> spamWords;
+  std::unordered_map<std::string, unsigned> hamWords;
+  unsigned spamCt = 0;
+  unsigned hamCt = 0;
 
-  // get ls of words
-  std::string path = "data/spam/train";
-  for (const auto& entry : fs::directory_iterator(path))
+  /*
+  (a) Use the training data to make a list of words (made out of letters only) from the Subject
+      line. Now you have a list of words to test against.
+  */
+
+  // get ls of spam words
+  std::string spamPath = "data/spam/train";
+  for (const auto& entry : fs::directory_iterator(spamPath))
   {
     fs::path entryPath = entry.path();
     std::string path_string{entryPath.u8string()};
@@ -33,17 +46,82 @@ int main()
     std::string line = GetSubjectLine(path_string.c_str());
 
     // get words from subject line
-    GetWords(line, words);
+    GetWords(line, spamWords);
+
+    // up spam ct
+    ++spamCt;
   }
 
-  // get 
-
-  //debug
-  for (auto& word : words)
+  // get ls of ham words (ez)
+  std::string ezHamPath = "data/easy_ham/train";
+  for (const auto& entry : fs::directory_iterator(ezHamPath))
   {
-    std::cout << word.first << ": " << word.second << std::endl;
+    fs::path entryPath = entry.path();
+    std::string path_string{entryPath.u8string()};
+
+    // get subject line w/ subject
+    std::string line = GetSubjectLine(path_string.c_str());
+
+    // get words from subject line
+    GetWords(line, hamWords);
+
+    // up spam ct
+    ++hamCt;
   }
-  std::cout << std::endl;
+
+  // get ls of ham words (hard)
+  std::string hardHamPath = "data/hard_ham/train";
+  for (const auto& entry : fs::directory_iterator(hardHamPath))
+  {
+    fs::path entryPath = entry.path();
+    std::string path_string{entryPath.u8string()};
+
+    // get subject line w/ subject
+    std::string line = GetSubjectLine(path_string.c_str());
+
+    // get words from subject line
+    GetWords(line, hamWords);
+
+    // up spam ct
+    ++hamCt;
+  }
+
+  ////debug
+  //for (auto& word : hamWords)
+  //{
+  //  std::cout << word.first << ": " << word.second << std::endl;
+  //}
+  //std::cout << std::endl;
+
+  /*
+  (b) For each wk, compute the probabilities P(wk | spam) and P(wk | ham): Use ес = 1, ет = 2
+      for smoothing
+  */
+
+  // res
+  std::unordered_map<std::string, float> spamProbMap;
+  std::unordered_map<std::string, float> hamProbMap;
+
+  // itr each word ls map and calc P(wk | spam/ham)
+  CalcProbForWord(spamProbMap, spamWords, spamCt);
+  CalcProbForWord(hamProbMap, hamWords, hamCt);
+
+  ////debug
+  //for (auto& i : spamProbMap)
+  //{
+  //  std::cout << i.first << ": " << i.second << std::endl;
+  //}
+  //std::cout << std::endl;
+
+  /*
+  (c) Output the list of 5 words with highest probabilities P(spam | wk)
+  (d) Output the list of 5 words with highest probabilities P(ham | wk)
+  */
+
+  // res
+  std::unordered_map<std::string, float> top5SpamProb;
+  std::unordered_map<std::string, float> top5HamProb;
+
 
 
   return 0;
@@ -128,6 +206,18 @@ void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& word
     }
 
     ++words[lowerWord];
+  }
+}
+
+#define ALPHA 1
+#define BETA 2
+void CalcProbForWord(std::unordered_map<std::string, float>& probMap, std::unordered_map<std::string, unsigned>& spamWords, unsigned ct)
+{
+  for (auto& i : spamWords)
+  {
+    std::string word = i.first;
+    float spamProb = static_cast<float>(ALPHA + spamWords[word]) / static_cast<float>(BETA + ct);
+    probMap[word] = spamProb;
   }
 }
 
