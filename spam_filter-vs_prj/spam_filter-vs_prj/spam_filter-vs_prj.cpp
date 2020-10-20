@@ -10,6 +10,7 @@
 #include <algorithm>      // std::find_if
 #include <cctype>         // std::isalpha
 #include <filesystem>     // std::filesystem
+#include <limits>         // std::numeric_limits
 namespace fs = std::filesystem;
 #include "utf8.h"
 
@@ -20,6 +21,10 @@ void CalcProbForWord(
   std::unordered_map<std::string, float>& probMap,
   std::unordered_map<std::string, unsigned>& spamWords,
   unsigned ct
+);
+void GetTop5Probs(
+  std::unordered_map<std::string, float>& probMap,
+  std::unordered_map<std::string, float>& top5Prob
 );
 
 int main()
@@ -122,6 +127,10 @@ int main()
   std::unordered_map<std::string, float> top5SpamProb;
   std::unordered_map<std::string, float> top5HamProb;
 
+  std::cout << "TOP 5 SPAM WORDS :" << std::endl;
+  GetTop5Probs(spamProbMap, top5SpamProb);
+  std::cout << "TOP 5 HAM WORDS :" << std::endl;
+  GetTop5Probs(hamProbMap, top5HamProb);
 
 
   return 0;
@@ -195,15 +204,36 @@ void GetWords(std::string& line, std::unordered_map<std::string, unsigned>& word
       word = letterWord;
     }
 
-    // skip empty word
-    if (word.empty()) continue;
-
     // get lower-case word
     std::string lowerWord;
     for (auto& c : word)
     {
       lowerWord += std::tolower(c);
     }
+
+    // skip empty, meaningless, unlikely words
+    if (
+      lowerWord.empty()
+      or lowerWord == "your"
+      or lowerWord == "for"
+      or lowerWord == "the"
+      or lowerWord == "you"
+      or lowerWord == "a"
+      or lowerWord == "re"
+      or lowerWord == "for"
+      or lowerWord == "to"
+      or lowerWord == "on"
+      or lowerWord == "of"
+      or lowerWord == "in"
+      or lowerWord == "and"
+      or lowerWord == "with"
+      or lowerWord == "is"
+      or lowerWord == "from"
+      or lowerWord == "ouch"
+      or lowerWord == "bliss"
+      or lowerWord == "spamassassin"
+      or lowerWord == "perl"
+      ) continue;
 
     ++words[lowerWord];
   }
@@ -219,5 +249,29 @@ void CalcProbForWord(std::unordered_map<std::string, float>& probMap, std::unord
     float spamProb = static_cast<float>(ALPHA + spamWords[word]) / static_cast<float>(BETA + ct);
     probMap[word] = spamProb;
   }
+}
+
+void GetTop5Probs(std::unordered_map<std::string, float>& probMap, std::unordered_map<std::string, float>& top5Prob)
+{
+  std::unordered_map<std::string, float> mapType;
+  using pair_type = decltype(mapType)::value_type;
+
+  for (size_t i = 0; i < 5; i++)
+  {
+    auto pr = std::max_element(
+      std::begin(probMap),
+      std::end(probMap),
+      [](const pair_type& p1, const pair_type& p2) {
+        return p1.second < p2.second;
+      }
+    );
+
+    std::cout << pr->first << ": " << pr->second << std::endl;
+
+    top5Prob[pr->first] = pr->second;
+    probMap.erase(pr->first);
+  }
+
+  std::cout << std::endl;
 }
 
