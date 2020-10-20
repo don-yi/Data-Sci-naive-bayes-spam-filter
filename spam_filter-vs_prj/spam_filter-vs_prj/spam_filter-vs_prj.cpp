@@ -9,6 +9,8 @@
 #include <algorithm>  // std::find_if
 #include <cctype>     // std::isalpha
 #include <filesystem> // std::filesystem
+namespace fs = std::filesystem;
+#include "utf8.h"
 
 // fwd ref
 std::string GetSubjectLine(char const* filename);
@@ -16,12 +18,27 @@ void GetWords(std::string& line, std::vector<std::string>& words);
 
 int main()
 {
-  // get subject line w/ subject
-  std::string line = GetSubjectLine("00004.68819fc91d34c82433074d7bd3127dcc");
-
-  // get words from subject line
+  // res
   std::vector<std::string> words;
-  GetWords(line, words);
+
+  std::string path = "data/spam/train";
+  for (const auto& entry : fs::directory_iterator(path))
+  {
+    fs::path entryPath = entry.path();
+    std::string path_string{entryPath.u8string()};
+
+    // get subject line w/ subject
+    std::string line = GetSubjectLine(path_string.c_str());
+
+    // get words from subject line
+    GetWords(line, words);
+  }
+
+  for (auto& word : words)
+  {
+    std::cout << word << " ";
+  }
+  std::cout << std::endl;
 
 
   return 0;
@@ -36,15 +53,23 @@ std::string GetSubjectLine(char const* filename)
   {
     std::istringstream iss(line);
 
-    // skip non-subject lines
-    if (not line.compare(0, 9, "Subject: ")) break;
+    // skip non-subject lines, stop at subject line
+    if (line.compare(0, 9, "Subject: ")) continue;
+    else break;
   }
 
   return line;
 }
 
+bool isalpha(uint32_t c) {
+    return (c >= 0x0041 && c <= 0x005A)
+        || (c >= 0x0061 && c <= 0x007A);
+}
+
 void GetWords(std::string& line, std::vector<std::string>& words)
 {
+  if (line.empty()) return;
+
   // substr w/o "Subject: "
   line = line.substr(9);
   // iss
@@ -52,16 +77,22 @@ void GetWords(std::string& line, std::vector<std::string>& words)
   // words from line
   std::string word;
 
-  struct non_alpha {
-    bool operator()(char c) {
-      return !std::isalpha(c);
-    }
-  };
+  //struct non_alpha {
+  //  bool operator()(char c) {
+  //    return !std::isalpha(c);
+  //  }
+  //};
 
   while (iss >> word)
   {
+    //bool contains_non_alpha
+    //  = std::find_if(word.begin(), word.end(), non_alpha()) != word.end();
     bool contains_non_alpha
-      = std::find_if(word.begin(), word.end(), non_alpha()) != word.end();
+      = std::any_of(utf8::unchecked::iterator(word.begin()),
+        utf8::unchecked::iterator(word.end()),
+        [](uint32_t c) { return !isalpha(c); });
+
+
     // if not only letters
     if (contains_non_alpha)
     {
@@ -69,7 +100,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
       std::string letterWord;
       for (auto& c : word)
       {
-        if (not std::isalpha(c)) break;
+        if (isalpha(static_cast<uint32_t>(c))) break;
 
         letterWord += c;
       }
@@ -87,7 +118,7 @@ void GetWords(std::string& line, std::vector<std::string>& words)
       lowerWord += std::tolower(c);
     }
 
-    std::cout << lowerWord << std::endl;
+    //std::cout << lowerWord << std::endl;
     words.push_back(lowerWord);
   }
 }
