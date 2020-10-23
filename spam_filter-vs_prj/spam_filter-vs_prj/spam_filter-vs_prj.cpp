@@ -72,19 +72,12 @@ int main()
   // get ls of spam words
   std::string spamPath = "data/spam/train";
   GetWordsLs(spamPath, spamWords, spamCt);
-  // get ls of ham words (ez)
-  std::string ezHamPath = "data/easy_ham/train";
-  GetWordsLs(ezHamPath, hamWords, hamCt);
-  // get ls of ham words (hard)
-  std::string hardHamPath = "data/hard_ham/train";
-  GetWordsLs(hardHamPath, hamWords, hamCt);
 
-  ////debug
-  //for (auto& word : hamWords)
-  //{
-  //  std::cout << word.first << ": " << word.second << std::endl;
-  //}
-  //std::cout << std::endl;
+  // get ls of ham words
+  std::string ezHamPath = "data/easy_ham/train";
+  std::string hardHamPath = "data/hard_ham/train";
+  GetWordsLs(ezHamPath, hamWords, hamCt);
+  GetWordsLs(hardHamPath, hamWords, hamCt);
 
   /*
   (b) For each wk, compute the probabilities P(wk | spam) and P(wk | ham): Use ес = 1, ет = 2
@@ -98,13 +91,6 @@ int main()
   // itr each word ls map and calc P(wk | spam/ham)
   CalcProbForWord(spamProbMap, spamWords, spamCt);
   CalcProbForWord(hamProbMap, hamWords, hamCt);
-
-  ////debug
-  //for (auto& i : spamProbMap)
-  //{
-  //  std::cout << i.first << ": " << i.second << std::endl;
-  //}
-  //std::cout << std::endl;
 
   /*
   (c) Output the list of 5 words with highest probabilities P(spam | wk)
@@ -128,8 +114,6 @@ int main()
   unsigned falseSpam = 0;
   unsigned trueHam = 0;
   unsigned falseHam = 0;
-
-  //std::cout << std::endl;
 
   TestSpamFilter(
     "data/spam/test",
@@ -175,8 +159,6 @@ int main()
   std::cout << "RECALL RATE: "
     << static_cast<float>(trueSpam) / static_cast<float>(numRealSpam)
     << std::endl;
-
-  std::cout << std::endl;
 
   return 0;
 }
@@ -299,10 +281,10 @@ void GetWords(
       or lowerWord == "with"
       or lowerWord == "is"
       or lowerWord == "from"
-      or lowerWord == "ouch"
-      or lowerWord == "bliss"
-      or lowerWord == "spamassassin"
-      or lowerWord == "perl"
+      //or lowerWord == "ouch"
+      //or lowerWord == "bliss"
+      //or lowerWord == "spamassassin"
+      //or lowerWord == "perl"
       ) continue;
 
     // up words map
@@ -387,25 +369,6 @@ void InitIsWordsInSubject(
   }
 }
 
-//void IncludeEachOtherProb(
-//  std::unordered_map<std::string, float>& top5Prob1,
-//  std::unordered_map<std::string, float>& top5Prob2,
-//  unsigned& ct2
-//)
-//{
-//  // include each other in prob map
-//  for (auto& i : top5Prob1) {
-//    std::string word = i.first;
-//
-//    // skip if exist
-//    if (top5Prob2.find(word) != top5Prob2.end()) {
-//      continue;
-//    }
-//
-//    top5Prob2[word] = static_cast<float>(ALPHA) / static_cast<float>(BETA + ct2);
-//  }
-//}
-
 float CalcPWords(
   std::unordered_map<std::string, float>& probMap,
   std::unordered_map<std::string, unsigned>& words
@@ -455,7 +418,9 @@ void TestSpamFilter(
       = GetSpamProbGivenWords(words, pSpam, pHam, spamProbMap, hamProbMap);
     //std::cout << spamP << std::endl;
 
-    if      (spamP >= .3f) ++predSpamCt;
-    else if (spamP <  .3f) ++predHamCt;
+    if      (spamP >= .8) 
+      ++predSpamCt;
+    else if (spamP <  .8) 
+      ++predHamCt;
   }
 }
